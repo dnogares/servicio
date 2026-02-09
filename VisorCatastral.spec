@@ -1,12 +1,29 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
+
+datas = [('C:\\Users\\arnyd\\.gemini\\antigravity\\playground\\final-singularity\\frontend/dist', 'frontend/dist'), ('C:\\Users\\arnyd\\.gemini\\antigravity\\playground\\final-singularity\\backend/logic', 'logic')]
+binaries = []
+hiddenimports = ['rasterio.serde', 'rasterio._shim']
+tmp_ret = collect_all('geopandas')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('fiona')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('rasterio')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('shapely')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('pyproj')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('contextily')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
     ['C:\\Users\\arnyd\\.gemini\\antigravity\\playground\\final-singularity\\backend/main.py'],
     pathex=[],
-    binaries=[],
-    datas=[('C:\\Users\\arnyd\\.gemini\\antigravity\\playground\\final-singularity\\frontend/dist', 'frontend/dist'), ('C:\\Users\\arnyd\\.gemini\\antigravity\\playground\\final-singularity\\backend/logic', 'logic')],
-    hiddenimports=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
