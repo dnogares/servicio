@@ -363,4 +363,5 @@ async def listar_procesos():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Desactivar log_config para evitar error 'isatty' en modo --noconsole de PyInstaller
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_config=None)
