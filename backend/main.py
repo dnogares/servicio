@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from logic.orquestador import OrquestadorPipeline
+from logic.orquestador2 import OrquestadorPipeline
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN
