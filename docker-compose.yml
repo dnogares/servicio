@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: catastral-backend
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     volumes:
       # Volumen para FUENTES (mapear al volumen de Easypanel)
       - /app/FUENTES:/app/FUENTES
