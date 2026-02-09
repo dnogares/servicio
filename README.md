@@ -1,5 +1,9 @@
 # Pipeline GIS Catastral
 
+[![GitHub](https://img.shields.io/badge/GitHub-dnogares%2Fservicio-blue?logo=github)](https://github.com/dnogares/servicio)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 > 🗺️ **Procesamiento automatizado de referencias catastrales** - Sistema completo de 19 pasos para generación de cartografía, análisis espacial y documentación catastral.
 
 ## 🌟 Características
