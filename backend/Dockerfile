@@ -6,19 +6,20 @@ RUN apt-get update && apt-get install -y \
     libgdal-dev \
     libspatialindex-dev \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar requirements
-COPY requirements.txt .
+# Copiar requirements desde backend/ (contexto raíz)
+COPY backend/requirements.txt .
 
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código de la aplicación
-COPY . .
+# Copiar código del backend
+COPY backend/ .
 
 # Crear directorios necesarios
 RUN mkdir -p /app/data/INPUTS /app/data/OUTPUTS /app/FUENTES

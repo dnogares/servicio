@@ -2,17 +2,24 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+# Copiar package files desde frontend/ (contexto raíz)
+COPY frontend/package*.json ./
 RUN npm ci
 
-COPY . .
+# Copiar código del frontend
+COPY frontend/ .
+
+# Build de producción
 RUN npm run build
 
 # Servidor Nginx para servir la app
 FROM nginx:alpine
 
+# Copiar build desde stage anterior
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copiar configuración de Nginx
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
