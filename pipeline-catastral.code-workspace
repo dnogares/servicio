@@ -1,0 +1,135 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "[python]": {
+            "editor.defaultFormatter": "ms-python.black-formatter",
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": true
+            }
+        },
+        "[typescript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescriptreact]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[javascript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[json]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "files.exclude": {
+            "**/__pycache__": true,
+            "**/*.pyc": true,
+            "**/.pytest_cache": true,
+            "**/node_modules": true,
+            "**/dist": true,
+            "**/.next": true
+        },
+        "search.exclude": {
+            "**/node_modules": true,
+            "**/dist": true,
+            "**/.venv": true,
+            "**/venv": true
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "ms-python.vscode-pylance",
+            "ms-python.black-formatter",
+            "esbenp.prettier-vscode",
+            "dbaeumer.vscode-eslint",
+            "ms-azuretools.vscode-docker",
+            "ms-vscode-remote.remote-containers",
+            "bradlc.vscode-tailwindcss",
+            "rangav.vscode-thunder-client"
+        ]
+    },
+    "launch": {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Backend: FastAPI",
+                "type": "python",
+                "request": "launch",
+                "module": "uvicorn",
+                "args": [
+                    "main:app",
+                    "--reload",
+                    "--host",
+                    "0.0.0.0",
+                    "--port",
+                    "8000"
+                ],
+                "cwd": "${workspaceFolder}/backend",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}/backend",
+                    "MPLBACKEND": "Agg"
+                },
+                "console": "integratedTerminal"
+            },
+            {
+                "name": "Frontend: Vite Dev",
+                "type": "node",
+                "request": "launch",
+                "cwd": "${workspaceFolder}/frontend",
+                "runtimeExecutable": "npm",
+                "runtimeArgs": [
+                    "run",
+                    "dev"
+                ],
+                "console": "integratedTerminal"
+            }
+        ]
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Backend: Install Dependencies",
+                "type": "shell",
+                "command": "pip install -r requirements.txt",
+                "options": {
+                    "cwd": "${workspaceFolder}/backend"
+                }
+            },
+            {
+                "label": "Frontend: Install Dependencies",
+                "type": "shell",
+                "command": "npm install",
+                "options": {
+                    "cwd": "${workspaceFolder}/frontend"
+                }
+            },
+            {
+                "label": "Docker: Build All",
+                "type": "shell",
+                "command": "docker-compose build"
+            },
+            {
+                "label": "Docker: Start Services",
+                "type": "shell",
+                "command": "docker-compose up -d"
+            },
+            {
+                "label": "Docker: Stop Services",
+                "type": "shell",
+                "command": "docker-compose down"
+            }
+        ]
+    }
+}
