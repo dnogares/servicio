@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// @ts-ignore
+const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+
 
 interface ProcesoStatus {
     proceso_id: string;
