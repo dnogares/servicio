@@ -1,4 +1,3 @@
-```
 """
 FastAPI Backend para Pipeline GIS Catastral
 """
@@ -133,8 +132,8 @@ async def info():
 
 @app.post("/upload")
 async def upload_file(
-    file: UploadFile = File(...),
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
 ):
     """
     Sube un archivo .txt con referencias catastrales y comienza el procesamiento.
