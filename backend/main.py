@@ -83,6 +83,53 @@ async def health():
     """Health check para Easypanel."""
     return {"status": "healthy"}
 
+@app.get("/info")
+async def info():
+    """Información detallada del servicio."""
+    # Verificar si FUENTES existe y tiene archivos
+    fuentes_ok = FUENTES_DIR.exists()
+    fuentes_archivos = 0
+    if fuentes_ok:
+        fuentes_archivos = len(list(FUENTES_DIR.rglob("*.gpkg")))
+    
+    # Contar archivos en OUTPUTS
+    outputs_archivos = 0
+    if OUTPUTS_DIR.exists():
+        outputs_archivos = len(list(OUTPUTS_DIR.rglob("*")))
+    
+    return {
+        "servicio": "Pipeline GIS Catastral",
+        "version": "1.0.0",
+        "estado": "activo",
+        "descripcion": "Procesamiento automatizado de referencias catastrales - 19 pasos",
+        "directorios": {
+            "base": str(BASE_DIR),
+            "fuentes": str(FUENTES_DIR),
+            "uploads": str(UPLOADS_DIR),
+            "outputs": str(OUTPUTS_DIR)
+        },
+        "estadisticas": {
+            "fuentes_disponible": fuentes_ok,
+            "fuentes_gpkg_count": fuentes_archivos,
+            "outputs_archivos": outputs_archivos,
+            "procesos_activos": len(procesos_activos),
+            "procesos_completados": len([p for p in procesos_activos.values() if p["estado"] == "completado"]),
+            "procesos_en_curso": len([p for p in procesos_activos.values() if p["estado"] == "procesando"]),
+            "procesos_error": len([p for p in procesos_activos.values() if p["estado"] == "error"])
+        },
+        "endpoints": {
+            "root": "/",
+            "health": "/health",
+            "info": "/info",
+            "upload": "POST /upload",
+            "status": "GET /status/{proceso_id}",
+            "logs": "GET /logs/{proceso_id}",
+            "download": "GET /download/{proceso_id}",
+            "delete": "DELETE /proceso/{proceso_id}",
+            "list": "GET /procesos"
+        }
+    }
+
 @app.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
