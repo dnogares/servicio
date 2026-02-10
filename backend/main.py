@@ -94,7 +94,7 @@ async def startup_event():
 
 api_router = APIRouter()
 
-@api_router.get("/")
+@api_router.get("/api-status")
 async def api_root():
     return {"status": "ok", "message": "API del Pipeline GIS Catastral"}
 
@@ -229,6 +229,7 @@ def procesar_archivo_task(proceso_id: str, archivo_path: Path):
 # ═══════════════════════════════════════════════════════════════════════════
 
 app.include_router(api_router, prefix="/api")
+app.include_router(api_router) # Fallback para proxies que eliminan el prefijo /api
 
 # Servir el frontend
 from fastapi.staticfiles import StaticFiles
