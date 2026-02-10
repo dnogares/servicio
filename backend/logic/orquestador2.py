@@ -271,7 +271,8 @@ class OrquestadorPipeline:
         self, 
         base_dir: Path,
         fuentes_dir: Optional[Path] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        geometry_callback: Optional[callable] = None
     ) -> None:
         """
         Inicializa el orquestador y crea las carpetas necesarias.
@@ -280,6 +281,7 @@ class OrquestadorPipeline:
             base_dir: Directorio base del proyecto (donde están INPUTS y OUTPUTS)
             fuentes_dir: Directorio de FUENTES (por defecto /app/FUENTES en producción)
             progress_callback: Función para reportar progreso (callable)
+            geometry_callback: Función para reportar geometrías encontradas (callable)
         """
         self.base_dir = base_dir
         self.inputs = base_dir / "INPUTS"
@@ -296,6 +298,7 @@ class OrquestadorPipeline:
         
         # Callback para progreso
         self.progress_callback = progress_callback or (lambda x: print(x))
+        self.geometry_callback = geometry_callback
         
         # Sesión HTTP reutilizable para eficiencia
         self.session = requests.Session()
@@ -636,6 +639,11 @@ class OrquestadorPipeline:
                 superficie, coords = self._extraer_geometria(xml_path)
                 if coords:
                     parcela.actualizar_geometria(coords, superficie)
+                    
+                    # Notificar geometría encontrada al frontend
+                    if self.geometry_callback:
+                        self.geometry_callback(parcela.refcat, coords)
+                        
                     parcela.rutas.update({
                         "xml": str(xml_path),
                         "pdf": str(pdf_path),

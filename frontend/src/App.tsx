@@ -1,6 +1,21 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { MapContainer, TileLayer, Polygon, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import './App.css';
+
+// Fix para iconos de Leaflet en React
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 // @ts-ignore
 const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
@@ -12,7 +27,23 @@ interface ProcesoStatus {
     progreso: number;
     mensaje: string;
     carpeta_resultado?: string;
+    geometrias?: { refcat: string; coords: [number, number][] }[];
     error?: string;
+}
+
+// Componente para auto-ajustar el zoom del mapa a las parcelas
+function FitBounds({ geometrias }: { geometrias: NonNullable<ProcesoStatus['geometrias']> }) {
+    const map = useMap();
+    useEffect(() => {
+        if (geometrias && geometrias.length > 0) {
+            const points = geometrias.flatMap(g => g.coords);
+            if (points.length > 0) {
+                const bounds = L.latLngBounds(points);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+    }, [geometrias, map]);
+    return null;
 }
 
 function App() {
@@ -152,94 +183,111 @@ function App() {
                     {/* Paso 1: Subir Archivo */}
                     {!procesoId && (
                         <div className="upload-section">
-                            <div className="card">
-                                <h2 className="section-title">📤 Subir Archivo</h2>
-                                <p className="section-description">
-                                    Sube un archivo .txt con referencias catastrales (una por línea)
-                                </p>
+                            {/* Columna Izquierda: Formulario */}
+                            <div className="left-column">
+                                <div className="card">
+                                    <h2 className="section-title">📤 Subir Archivo</h2>
+                                    <p className="section-description">
+                                        Sube un archivo .txt con referencias catastrales (una por línea)
+                                    </p>
 
-                                <form onSubmit={handleSubmit}>
-                                    <div
-                                        className={`dropzone ${arrastrando ? 'dragging' : ''} ${archivo ? 'has-file' : ''}`}
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={handleDrop}
-                                    >
-                                        {!archivo ? (
-                                            <>
-                                                <div className="dropzone-icon">📁</div>
-                                                <p className="dropzone-text">
-                                                    Arrastra un archivo .txt aquí<br />o haz clic para seleccionar
-                                                </p>
-                                                <input
-                                                    type="file"
-                                                    accept=".txt"
-                                                    onChange={handleFileChange}
-                                                    className="file-input"
-                                                    id="file-input"
-                                                />
-                                                <label htmlFor="file-input" className="file-label">
-                                                    Seleccionar archivo
-                                                </label>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="file-selected">
-                                                    <div className="file-icon">📄</div>
-                                                    <div className="file-info">
-                                                        <p className="file-name">{archivo.name}</p>
-                                                        <p className="file-size">{(archivo.size / 1024).toFixed(2)} KB</p>
+                                    <form onSubmit={handleSubmit}>
+                                        <div
+                                            className={`dropzone ${arrastrando ? 'dragging' : ''} ${archivo ? 'has-file' : ''}`}
+                                            onDragOver={handleDragOver}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={handleDrop}
+                                        >
+                                            {!archivo ? (
+                                                <>
+                                                    <div className="dropzone-icon">📁</div>
+                                                    <p className="dropzone-text">
+                                                        Arrastra un archivo .txt aquí<br />o haz clic para seleccionar
+                                                    </p>
+                                                    <input
+                                                        type="file"
+                                                        accept=".txt"
+                                                        onChange={handleFileChange}
+                                                        className="file-input"
+                                                        id="file-input"
+                                                    />
+                                                    <label htmlFor="file-input" className="file-label">
+                                                        Seleccionar archivo
+                                                    </label>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="file-selected">
+                                                        <div className="file-icon">📄</div>
+                                                        <div className="file-info">
+                                                            <p className="file-name">{archivo.name}</p>
+                                                            <p className="file-size">{(archivo.size / 1024).toFixed(2)} KB</p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setArchivo(null)}
+                                                            className="remove-file"
+                                                        >
+                                                            ✕
+                                                        </button>
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setArchivo(null)}
-                                                        className="remove-file"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
+                                                </>
+                                            )}
+                                        </div>
 
-                                    <button
-                                        type="submit"
-                                        disabled={!archivo || cargando}
-                                        className="btn btn-primary"
-                                    >
-                                        {cargando ? '⏳ Iniciando procesamiento...' : '🚀 Procesar Referencias'}
-                                    </button>
-                                </form>
+                                        <button
+                                            type="submit"
+                                            disabled={!archivo || cargando}
+                                            className="btn btn-primary"
+                                        >
+                                            {cargando ? '⏳ Iniciando procesamiento...' : '▶️ Procesar Referencias'}
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
 
-                            {/* Información */}
-                            <div className="info-card">
-                                <h3 className="info-title">ℹ️ Información del Pipeline</h3>
-                                <div className="info-content">
-                                    <div className="info-item">
-                                        <span className="info-number">19</span>
-                                        <span className="info-label">Pasos Automatizados</span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="info-number">12</span>
-                                        <span className="info-label">Planos Cartográficos</span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="info-number">20+</span>
-                                        <span className="info-label">Archivos Generados</span>
-                                    </div>
+                            {/* Columna Derecha: Mapa e Info */}
+                            <div className="right-column">
+                                {/* Mapa */}
+                                <div className="map-card">
+                                    <MapContainer center={[40.416775, -3.703790]} zoom={6} scrollWheelZoom={true}>
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+                                        {/* Renderizar geometrías si existen (incluso de procesos anteriores si se guardaran) */}
+                                    </MapContainer>
                                 </div>
 
-                                <div className="phases">
-                                    <h4>Fases del Proceso:</h4>
-                                    <ul>
-                                        <li>🔍 Fase 1: Adquisición de datos (XML, PDF)</li>
-                                        <li>🗺️ Fase 2: Generación vectorial (KML, PNG)</li>
-                                        <li>📊 Fase 3: Exportación tabular (Excel, CSV)</li>
-                                        <li>📝 Fase 4: Documentación (Logs)</li>
-                                        <li>🌍 Fase 5: Análisis espacial (Afecciones)</li>
-                                        <li>📍 Fases 6-12: Planos cartográficos</li>
-                                    </ul>
+                                {/* Información */}
+                                <div className="info-card">
+                                    <h3 className="info-title">ℹ️ Información del Pipeline</h3>
+                                    <div className="info-content">
+                                        <div className="info-item">
+                                            <span className="info-number">19</span>
+                                            <span className="info-label">Pasos Automatizados</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <span className="info-number">12</span>
+                                            <span className="info-label">Planos Cartográficos</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <span className="info-number">20+</span>
+                                            <span className="info-label">Archivos Generados</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="phases">
+                                        <h4>Fases del Proceso:</h4>
+                                        <ul>
+                                            <li>🔍 Fase 1: Adquisición de datos (XML, PDF)</li>
+                                            <li>🗺️ Fase 2: Generación vectorial (KML, PNG)</li>
+                                            <li>📊 Fase 3: Exportación tabular (Excel, CSV)</li>
+                                            <li>📝 Fase 4: Documentación (Logs)</li>
+                                            <li>🌍 Fase 5: Análisis espacial (Afecciones)</li>
+                                            <li>📍 Fases 6-12: Planos cartográficos</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -248,66 +296,89 @@ function App() {
                     {/* Paso 2: Progreso y Logs */}
                     {procesoId && status && (
                         <div className="processing-section">
-                            <div className="card">
-                                <h2 className="section-title">
-                                    {status.estado === 'procesando' && '⏳ Procesando...'}
-                                    {status.estado === 'completado' && '✅ Completado'}
-                                    {status.estado === 'error' && '❌ Error'}
-                                </h2>
+                            <div className="upload-section">
+                                {/* Columna Izquierda: Estado y Logs */}
+                                <div className="left-column">
+                                    <div className="card">
+                                        <h2 className="section-title">
+                                            {status.estado === 'procesando' && '⏳ Procesando...'}
+                                            {status.estado === 'completado' && '✅ Completado'}
+                                            {status.estado === 'error' && '❌ Error'}
+                                        </h2>
 
-                                {/* Barra de Progreso */}
-                                <div className="progress-container">
-                                    <div className="progress-info">
-                                        <span className="progress-label">{status.mensaje}</span>
-                                        <span className="progress-percentage">{status.progreso}%</span>
-                                    </div>
-                                    <div className="progress-bar">
-                                        <div
-                                            className={`progress-fill ${status.estado === 'error' ? 'error' : ''}`}
-                                            style={{ width: `${status.progreso}%` }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Logs */}
-                                <div className="logs-section">
-                                    <h3 className="logs-title">📋 Registro de Actividad</h3>
-                                    <div className="logs-container">
-                                        {logs.length === 0 ? (
-                                            <p className="logs-empty">Esperando logs...</p>
-                                        ) : (
-                                            logs.map((log, index) => (
-                                                <div key={index} className="log-entry">
-                                                    {log}
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Botones de Acción */}
-                                <div className="action-buttons">
-                                    {status.estado === 'completado' && (
-                                        <>
-                                            <button onClick={handleDescargar} className="btn btn-success">
-                                                📦 Descargar Resultados (ZIP)
-                                            </button>
-                                            <button onClick={handleNuevoProceso} className="btn btn-secondary">
-                                                🔄 Nuevo Proceso
-                                            </button>
-                                        </>
-                                    )}
-
-                                    {status.estado === 'error' && (
-                                        <>
-                                            <div className="error-message">
-                                                ⚠️ {status.error || 'Ocurrió un error durante el procesamiento'}
+                                        {/* Barra de Progreso */}
+                                        <div className="progress-container">
+                                            <div className="progress-info">
+                                                <span className="progress-label">{status.mensaje}</span>
+                                                <span className="progress-percentage">{status.progreso}%</span>
                                             </div>
-                                            <button onClick={handleNuevoProceso} className="btn btn-secondary">
-                                                🔄 Intentar de Nuevo
-                                            </button>
-                                        </>
-                                    )}
+                                            <div className="progress-bar">
+                                                <div
+                                                    className={`progress-fill ${status.estado === 'error' ? 'error' : ''}`}
+                                                    style={{ width: `${status.progreso}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Logs */}
+                                        <div className="logs-section">
+                                            <h3 className="logs-title">📋 Registro de Actividad</h3>
+                                            <div className="logs-container">
+                                                {logs.length === 0 ? (
+                                                    <p className="logs-empty">Esperando logs...</p>
+                                                ) : (
+                                                    logs.map((log, index) => (
+                                                        <div key={index} className="log-entry">
+                                                            {log}
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Botones de Acción */}
+                                        <div className="action-buttons">
+                                            {status.estado === 'completado' && (
+                                                <>
+                                                    <button onClick={handleDescargar} className="btn btn-success">
+                                                        📦 Descargar Resultados (ZIP)
+                                                    </button>
+                                                    <button onClick={handleNuevoProceso} className="btn btn-secondary">
+                                                        🔄 Nuevo Proceso
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {status.estado === 'error' && (
+                                                <>
+                                                    <div className="error-message">
+                                                        ⚠️ {status.error || 'Ocurrió un error durante el procesamiento'}
+                                                    </div>
+                                                    <button onClick={handleNuevoProceso} className="btn btn-secondary">
+                                                        🔄 Intentar de Nuevo
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Columna Derecha: Mapa en tiempo real */}
+                                <div className="right-column">
+                                    <div className="map-card" style={{ height: '100%', minHeight: '500px' }}>
+                                        <MapContainer center={[40.416775, -3.703790]} zoom={6} scrollWheelZoom={true}>
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            {status.geometrias && status.geometrias.map((geo) => (
+                                                <Polygon key={geo.refcat} positions={geo.coords} color="blue">
+                                                    <Popup>{geo.refcat}</Popup>
+                                                </Polygon>
+                                            ))}
+                                            {status.geometrias && <FitBounds geometrias={status.geometrias} />}
+                                        </MapContainer>
+                                    </div>
                                 </div>
                             </div>
                         </div>

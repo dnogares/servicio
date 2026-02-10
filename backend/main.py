@@ -1,5 +1,15 @@
 import sys
 import io
+import asyncio
+import shutil
+import uuid
+import zipfile
+import threading
+import time
+import os
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
 
 # Configurar salida estándar a UTF-8 para evitar errores de emojis en Windows
 if sys.stdout and hasattr(sys.stdout, 'buffer'):
@@ -7,25 +17,12 @@ if sys.stdout and hasattr(sys.stdout, 'buffer'):
 if sys.stderr and hasattr(sys.stderr, 'buffer'):
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-import asyncio
-import shutil
-import uuid
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
-import zipfile
-import io
-import threading
-import time
-
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, APIRouter
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from logic.orquestador2 import OrquestadorPipeline
-
-import os
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE RUTAS PARA MODO PORTABLE (PyInstaller)
@@ -135,6 +132,7 @@ async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File
         "progreso": 0,
         "mensaje": "Iniciando...",
         "logs": [],
+        "geometrias": [],
         "carpeta_resultado": None
     }
     
@@ -181,11 +179,21 @@ def procesar_archivo_task(proceso_id: str, archivo_path: Path):
             if "PIPELINE COMPLETO FINALIZADO" in msg:
                 procesos_activos[proceso_id]["progreso"] = 100
 
+    def nueva_geometria(refcat: str, coords: list):
+        if proceso_id in procesos_activos:
+            # Convertir (lon, lat) a (lat, lon) para Leaflet
+            lat_lon = [[lat, lon] for lon, lat in coords]
+            procesos_activos[proceso_id]["geometrias"].append({
+                "refcat": refcat,
+                "coords": lat_lon
+            })
+
     try:
         orquestador = OrquestadorPipeline(
             base_dir=BASE_DIR,
             fuentes_dir=FUENTES_DIR,
-            progress_callback=atualizar_progreso
+            progress_callback=atualizar_progreso,
+            geometry_callback=nueva_geometria
         )
         # Aseguramos que INPUTS existe en BASE_DIR
         inputs_dir = BASE_DIR / "INPUTS"
