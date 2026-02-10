@@ -976,200 +976,270 @@ class OrquestadorPipeline:
         print(f"📝 Archivo log.txt generado con éxito.")
 
     # ═══════════════════════════════════════════════════════════════════════
-    # PASO 8: ANÁLISIS DE AFECCIONES ONLINE (SIGPAC / NATURA / NITRATOS)
+    # PASO 8: ANÁLISIS DE AFECCIONES CON CAPAS LOCALES
     # ═══════════════════════════════════════════════════════════════════════
     
     def _procesar_afecciones(self, carpeta: Path) -> None:
         """
-        Analiza intersecciones consultando servicios WFS oficiales (SIGPAC, MITECO).
+        Analiza intersecciones usando archivos geoespaciales locales.
         
-        Sustituye a la lectura de archivos locales. Conecta en tiempo real con:
-        1. Recintos SIGPAC (Usos del suelo, coeficientes)
-        2. Red Natura 2000 (ZEPA, LIC/ZEC)
-        3. Zonas Vulnerables a Nitratos
+        Busca automáticamente capas en formato GPKG, SHP, GeoJSON, etc.
+        en una carpeta especificada y calcula afecciones con la parcela.
         
         Args:
             carpeta: Carpeta donde guardar los resultados
         """
         archivo_parcela = carpeta / "MAPA_MAESTRO_TOTAL.kml"
         
+        # Carpeta donde están las capas de afecciones
+        carpeta_capas = Path("/app/FUENTES")
+        
         if not archivo_parcela.exists():
-            print(f"⚠️  Falta {archivo_parcela.name} para definir zona de búsqueda.")
+            self.log(f"⚠️  Falta {archivo_parcela.name} para definir zona de búsqueda.")
+            return
+        
+        if not carpeta_capas.exists():
+            self.log(f"⚠️  Falta la carpeta de capas: {carpeta_capas}")
+            self.log(f"   Crea la carpeta y coloca allí tus archivos .gpkg, .shp, .geojson, etc.")
             return
 
         resultados = []
 
         try:
             # 1. Cargar Geometría de la Parcela (AOI)
+            self.log(f"📍 Cargando parcela desde {archivo_parcela.name}...")
             parcela_gdf = gpd.read_file(str(archivo_parcela), driver='KML')
             if parcela_gdf.crs is None:
                 parcela_gdf.crs = "EPSG:4326"
             
-            # Proyectar a UTM 30N (Estándar oficial SIGPAC para Península/Baleares)
+            # Proyectar a UTM 30N (Estándar para España Peninsular)
             parcela_utm = parcela_gdf.to_crs(epsg=25830)
             area_total_m2 = parcela_utm.area.sum()
             
-            # Obtener Bounding Box para la petición WFS
-            bounds = parcela_utm.total_bounds
-            bbox_str = f"{bounds[0]},{bounds[1]},{bounds[2]},{bounds[3]}"
+            self.log(f"   ✓ Área total de la parcela: {area_total_m2/10000:.4f} ha")
 
             # ═══════════════════════════════════════════════════════════════
-            # CONFIGURACIÓN DE SERVICIOS WFS OFICIALES (Basado en PDF Anexo I)
+            # BUSCAR AUTOMÁTICAMENTE ARCHIVOS GEOESPACIALES
             # ═══════════════════════════════════════════════════════════════
-            servicios = [
-                {
-                    'nombre': 'RECINTOS SIGPAC',
-                    'url': 'https://wfs.mapama.gob.es/wfs/sigpac',
-                    'capas': ['Recinto'], 
-                    'campo_analisis': 'uso_sigpac', # Columna clave para usos (TA, FO, PS...)
-                    'pdf_ref': 'Pág. 6'
-                },
-                {
-                    'nombre': 'RED NATURA 2000 (ZEPA)',
-                    'url': 'https://wfs.mapama.gob.es/wfs/biodiversidad',
-                    'capas': ['ZEPA'],
-                    'campo_analisis': 'nombre',
-                    'pdf_ref': 'Pág. 13'
-                },
-                {
-                    'nombre': 'RED NATURA 2000 (LIC/ZEC)',
-                    'url': 'https://wfs.mapama.gob.es/wfs/biodiversidad',
-                    'capas': ['LIC'],
-                    'campo_analisis': 'nombre',
-                    'pdf_ref': 'Pág. 13'
-                },
-                {
-                    'nombre': 'ZONAS VULNERABLES NITRATOS',
-                    # URL genérica de zonas vulnerables MITECO
-                    'url': 'https://wms.mapama.gob.es/sig/Agua/ZonasVulnerables/wfs',
-                    'capas': ['ZonasVulnerables'], 
-                    'campo_analisis': 'codigo',
-                    'pdf_ref': 'Pág. 16'
-                }
-            ]
+            extensiones = ['.gpkg', '.shp', '.geojson', '.json', '.kml', '.gml']
+            archivos_capa = []
+            
+            for ext in extensiones:
+                archivos_capa.extend(carpeta_capas.glob(f"*{ext}"))
+                archivos_capa.extend(carpeta_capas.glob(f"**/*{ext}"))  # Buscar en subcarpetas
+            
+            # Eliminar duplicados y ordenar
+            archivos_capa = sorted(list(set(archivos_capa)))
+            
+            if not archivos_capa:
+                self.log(f"❌ No se encontraron capas geoespaciales en {carpeta_capas}")
+                self.log(f"   Extensiones buscadas: {', '.join(extensiones)}")
+                return
+            
+            self.log(f"\n🗂️  Encontradas {len(archivos_capa)} capas para analizar:")
+            for arch in archivos_capa:
+                self.log(f"   • {arch.name}")
 
-            self.log(f"🌍 Iniciando análisis SIGPAC Online...")
+            # ═══════════════════════════════════════════════════════════════
+            # PROCESAR CADA CAPA
+            # ═══════════════════════════════════════════════════════════════
+            self.log(f"\n🌍 Iniciando análisis de afecciones con capas locales...")
 
-            for servicio in servicios:
-                for capa_wfs in servicio['capas']:
-                    self.log(f"   📡 Consultando {servicio['nombre']} ({capa_wfs})...")
+            for idx, archivo_capa in enumerate(archivos_capa, 1):
+                nombre_capa = archivo_capa.stem
+                self.log(f"\n[{idx}/{len(archivos_capa)}] 📡 Analizando: {nombre_capa}")
+                
+                try:
+                    # Cargar capa
+                    capa_gdf = gpd.read_file(str(archivo_capa))
                     
+                    if capa_gdf.empty:
+                        self.log(f"   ⚪ Capa vacía: {nombre_capa}")
+                        continue
+                    
+                    # Asegurar proyección correcta
+                    if capa_gdf.crs is None:
+                        self.log(f"   ⚠️  Sin CRS, asumiendo EPSG:25830")
+                        capa_gdf.set_crs(epsg=25830, inplace=True)
+                    else:
+                        capa_gdf = capa_gdf.to_crs(epsg=25830)
+                    
+                    self.log(f"   ↪ Geometrías cargadas: {len(capa_gdf)}")
+
+                    # CALCULAR INTERSECCIÓN
+                    interseccion = gpd.overlay(
+                        parcela_utm, 
+                        capa_gdf, 
+                        how='intersection', 
+                        keep_geom_type=False
+                    )
+                    
+                    if interseccion.empty:
+                        self.log(f"   ⚪ Sin intersección con {nombre_capa}")
+                        continue
+
+                    area_afectada = interseccion.area.sum()
+                    porcentaje = (area_afectada / area_total_m2) * 100
+
+                    # Si el porcentaje es despreciable, ignorar
+                    if porcentaje < 0.01:
+                        self.log(f"   ⚪ Afección despreciable (<0.01%) en {nombre_capa}")
+                        continue
+
+                    # ═══════════════════════════════════════════════════════════
+                    # ANÁLISIS DE ATRIBUTOS (detectar columnas relevantes)
+                    # ═══════════════════════════════════════════════════════════
+                    detalles = []
+                    
+                    # Buscar columnas que puedan contener información útil
+                    columnas_interes = [
+                        'nombre', 'name', 'tipo', 'type', 'uso', 'uso_sigpac', 
+                        'categoria', 'codigo', 'code', 'zona', 'descripcion',
+                        'clase', 'class', 'espacio', 'figura'
+                    ]
+                    
+                    columna_encontrada = None
+                    for col_buscar in columnas_interes:
+                        # Buscar coincidencia case-insensitive
+                        for col_real in interseccion.columns:
+                            if col_buscar.lower() == col_real.lower():
+                                columna_encontrada = col_real
+                                break
+                        if columna_encontrada:
+                            break
+                    
+                    if columna_encontrada and columna_encontrada in interseccion.columns:
+                        # Agrupar por tipo
+                        grupos = interseccion.groupby(columna_encontrada).apply(
+                            lambda x: x.area.sum()
+                        )
+                        for etiqueta, sup in grupos.items():
+                            detalles.append(f"{etiqueta}: {sup/10000:.4f} ha")
+                        
+                        detalle_texto = " | ".join(detalles[:5])  # Limitar a 5 para legibilidad
+                    else:
+                        detalle_texto = f"{len(interseccion)} geometría(s) afectada(s)"
+
+                    # Guardar resultado
+                    resultados.append({
+                        'capa': nombre_capa,
+                        'archivo': archivo_capa.name,
+                        'afecta': 'SÍ',
+                        'superficie_ha': round(area_afectada / 10000, 4),
+                        'porcentaje': round(porcentaje, 2),
+                        'detalle': detalle_texto,
+                        'geometrias': len(interseccion)
+                    })
+
+                    # ═══════════════════════════════════════════════════════════
+                    # GENERAR MAPA DE EVIDENCIA
+                    # ═══════════════════════════════════════════════════════════
+                    fig, ax = plt.subplots(figsize=(12, 10))
+                    
+                    # 1. Capa completa (contexto en gris claro)
                     try:
-                        # Construir URL WFS GetFeature
-                        # Solicitamos solo las geometrías que intersectan el BBOX
-                        wfs_req = (
-                            f"{servicio['url']}?service=WFS&version=1.1.0&request=GetFeature"
-                            f"&typename={capa_wfs}"
-                            f"&srsname=EPSG:25830"
-                            f"&bbox={bbox_str},EPSG:25830"
+                        capa_gdf.to_crs(epsg=3857).plot(
+                            ax=ax, 
+                            color='lightgray', 
+                            alpha=0.3, 
+                            edgecolor='gray',
+                            linewidth=0.5,
+                            zorder=1,
+                            label='Capa completa'
                         )
-                        
-                        # Descarga y lectura con GeoPandas
-                        # Timeout de 30s para evitar bloqueos
-                        try:
-                            capa_gdf = gpd.read_file(wfs_req)
-                        except Exception:
-                            # Reintento rápido por si es timeout
-                            capa_gdf = gpd.read_file(wfs_req)
+                    except:
+                        pass
+                    
+                    # 2. Intersección (zona afectada en rojo)
+                    interseccion.to_crs(epsg=3857).plot(
+                        ax=ax, 
+                        color='red', 
+                        alpha=0.6, 
+                        edgecolor='darkred',
+                        linewidth=1.5,
+                        zorder=5,
+                        label='Zona afectada'
+                    )
+                    
+                    # 3. Parcela (borde azul)
+                    parcela_utm.to_crs(epsg=3857).plot(
+                        ax=ax, 
+                        facecolor="none", 
+                        edgecolor="blue", 
+                        linewidth=3,
+                        zorder=10,
+                        label="Parcela"
+                    )
+                    
+                    # 4. Mapa Base
+                    try:
+                        cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik, zoom='auto')
+                    except:
+                        pass  # Si falla internet, mapa sin fondo
+                    
+                    ax.set_axis_off()
+                    ax.legend(loc='upper right', fontsize=10)
+                    ax.set_title(
+                        f"{nombre_capa}\n"
+                        f"Afección: {porcentaje:.2f}% ({area_afectada/10000:.4f} ha)\n"
+                        f"{detalle_texto[:100]}",  # Limitar longitud
+                        fontsize=11,
+                        pad=20
+                    )
+                    
+                    # Guardar mapa
+                    nombre_mapa = f"mapa_afeccion_{idx:02d}_{nombre_capa[:30]}.png"
+                    ruta_mapa = carpeta / nombre_mapa
+                    plt.savefig(ruta_mapa, dpi=150, bbox_inches='tight')
+                    plt.close()
+                    
+                    self.log(f"   ✅ AFECCIÓN DETECTADA: {porcentaje:.2f}%")
+                    self.log(f"      ↪ {detalle_texto[:80]}")
+                    self.log(f"      ↪ Mapa guardado: {nombre_mapa}")
 
-                        if capa_gdf.empty:
-                            self.log(f"      ⚪ Sin afección en {capa_wfs}.")
-                            continue
+                except Exception as e:
+                    self.log(f"   ❌ Error procesando {nombre_capa}: {str(e)}")
+                    import traceback
+                    self.log(f"      {traceback.format_exc()}")
 
-                        # Asegurar proyección correcta
-                        if capa_gdf.crs is None:
-                            capa_gdf.set_crs(epsg=25830, inplace=True)
-                        else:
-                            capa_gdf = capa_gdf.to_crs(epsg=25830)
-
-                        # CALCULAR INTERSECCIÓN
-                        # keep_geom_type=False evita errores si se generan líneas/puntos
-                        interseccion = gpd.overlay(parcela_utm, capa_gdf, how='intersection', keep_geom_type=False)
-                        
-                        if interseccion.empty:
-                            self.log(f"      ⚪ Sin intersección real en {capa_wfs}.")
-                            continue
-
-                        area_afectada = interseccion.area.sum()
-                        porcentaje = (area_afectada / area_total_m2) * 100
-
-                        # Si el porcentaje es despreciable (error de borde), ignorar
-                        if porcentaje < 0.01:
-                            self.log(f"      ⚪ Afección despreciable (<0.01%) en {capa_wfs}.")
-                            continue
-
-                        # ANÁLISIS DE DATOS (SEGÚN PDF)
-                        detalles = []
-                        campo = servicio.get('campo_analisis')
-                        
-                        # Buscar columnas relevantes independientemente de mayúsculas/minúsculas
-                        cols_lower = {c.lower(): c for c in interseccion.columns}
-                        col_real = cols_lower.get(campo.lower()) if campo else None
-
-                        if col_real:
-                            # Agrupar por tipo (ej: Uso SIGPAC)
-                            grupos = interseccion.groupby(col_real).apply(lambda x: x.area.sum())
-                            for etiqueta, sup in grupos.items():
-                                detalles.append(f"{etiqueta}: {sup/10000:.4f} ha")
-                        
-                        texto_detalle = " | ".join(detalles) if detalles else "Afección detectada"
-
-                        # Guardar resultado
-                        resultados.append({
-                            'capa': f"{servicio['nombre']} - {capa_wfs}",
-                            'afecta': 'SÍ',
-                            'superficie_ha': round(area_afectada / 10000, 4),
-                            'porcentaje': round(porcentaje, 2),
-                            'detalle': texto_detalle,
-                            'ref_pdf': servicio['pdf_ref']
-                        })
-
-                        # GENERAR MAPA DE EVIDENCIA
-                        fig, ax = plt.subplots(figsize=(10, 10))
-                        
-                        # 1. Parcela (Rojo)
-                        parcela_utm.to_crs(epsg=3857).plot(
-                            ax=ax, facecolor="none", edgecolor="red", linewidth=2.5, zorder=10, label="Parcela"
-                        )
-                        
-                        # 2. Capa Afección (Azul)
-                        interseccion.to_crs(epsg=3857).plot(
-                            ax=ax, color='blue', alpha=0.5, edgecolor='darkblue', zorder=5, label=capa_wfs
-                        )
-                        
-                        # 3. Mapa Base
-                        try:
-                            cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik)
-                        except:
-                            pass # Si falla internet para el basemap, sale blanco
-                        
-                        ax.set_axis_off()
-                        ax.set_title(f"{servicio['nombre']}\nAfección: {porcentaje:.2f}% ({texto_detalle})", fontsize=10)
-                        
-                        nombre_mapa = f"mapa_ONLINE_{capa_wfs}.png"
-                        plt.savefig(carpeta / nombre_mapa, dpi=150, bbox_inches='tight')
-                        plt.close()
-                        
-                        self.log(f"   ✅ AFECCIÓN DETECTADA ({capa_wfs}): {porcentaje:.2f}%")
-                        self.log(f"      ↪ Detalle: {texto_detalle}")
-
-                    except Exception as e:
-                        self.log(f"   ❌ Error WFS en {capa_wfs}: {e}")
-
-            # Exportar informe
+            # ═══════════════════════════════════════════════════════════════
+            # EXPORTAR INFORME FINAL
+            # ═══════════════════════════════════════════════════════════════
             if resultados:
                 df = pd.DataFrame(resultados)
-                csv_path = carpeta / "afecciones_sigpac_online.csv"
-                excel_path = carpeta / "afecciones_sigpac_online.xlsx"
                 
-                df.to_csv(csv_path, index=False, sep=";")
-                df.to_excel(excel_path, index=False)
-                self.log(f"📄 Informe de afecciones generado: {excel_path.name}")
+                # Ordenar por porcentaje de afección (mayor a menor)
+                df = df.sort_values('porcentaje', ascending=False)
+                
+                csv_path = carpeta / "afecciones_analisis.csv"
+                excel_path = carpeta / "afecciones_analisis.xlsx"
+                
+                df.to_csv(csv_path, index=False, sep=";", encoding='utf-8-sig')
+                df.to_excel(excel_path, index=False, engine='openpyxl')
+                
+                self.log(f"\n📄 ═══════════════════════════════════════")
+                self.log(f"   INFORME DE AFECCIONES GENERADO")
+                self.log(f"   ═══════════════════════════════════════")
+                self.log(f"   📊 Total capas con afección: {len(resultados)}")
+                self.log(f"   📁 Excel: {excel_path.name}")
+                self.log(f"   📁 CSV: {csv_path.name}")
+                self.log(f"   🗺️  Mapas generados: {len(resultados)}")
+                
+                # Resumen en consola
+                print(f"\n{'='*60}")
+                print(f"RESUMEN DE AFECCIONES DETECTADAS")
+                print(f"{'='*60}")
+                for _, fila in df.iterrows():
+                    print(f"• {fila['capa']}: {fila['porcentaje']}% ({fila['superficie_ha']} ha)")
+                print(f"{'='*60}\n")
+                
             else:
-                print("✅ Análisis completado sin afecciones relevantes detectadas.")
+                self.log("\n✅ Análisis completado: No se detectaron afecciones relevantes.")
 
         except Exception as e:
-            print(f"❌ Error crítico en módulo SIGPAC: {e}")
+            self.log(f"\n❌ Error crítico en módulo de afecciones: {e}")
+            import traceback
+            print(traceback.format_exc())
 
     # ═══════════════════════════════════════════════════════════════════════
     # PASO 9: PLANO DE EMPLAZAMIENTO (MAPA BASE)
@@ -2217,3 +2287,39 @@ if __name__ == "__main__":
     print(f"\n{'═'*80}")
     print(f"║{'PIPELINE FINALIZADO'.center(78)}║")
     print(f"{'═'*80}\n")
+
+# ═══════════════════════════════════════════════════════════════════════
+# FUNCIÓN AUXILIAR: EXPLORAR ESTRUCTURA DE UNA CAPA
+# ═══════════════════════════════════════════════════════════════════════
+def explorar_capa(ruta_capa: Path) -> None:
+    """
+    Herramienta de diagnóstico para ver qué contiene una capa.
+    Útil para identificar columnas relevantes.
+    """
+    import geopandas as gpd
+    
+    print(f"\n{'='*60}")
+    print(f"EXPLORANDO: {ruta_capa.name}")
+    print(f"{'='*60}")
+    
+    try:
+        gdf = gpd.read_file(str(ruta_capa))
+        
+        print(f"📊 Registros: {len(gdf)}")
+        print(f"📐 CRS: {gdf.crs}")
+        print(f"📏 Tipos de geometría: {gdf.geometry.type.unique()}")
+        print(f"\n📋 Columnas disponibles:")
+        
+        for col in gdf.columns:
+            if col != 'geometry':
+                # Mostrar algunos valores de ejemplo
+                valores_unicos = gdf[col].dropna().unique()[:5]
+                print(f"   • {col}: {list(valores_unicos)}")
+        
+        print(f"\n📍 Extent (bounds):")
+        print(f"   {gdf.total_bounds}")
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+    
+    print(f"{'='*60}\n")

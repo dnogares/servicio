@@ -63,7 +63,7 @@ body {
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 0 2rem;
 }
@@ -117,7 +117,7 @@ body {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 0 2rem;
 }
@@ -159,7 +159,7 @@ body {
 
 @media (min-width: 968px) {
   .upload-section {
-    grid-template-columns: 1.5fr 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -177,6 +177,9 @@ body {
   box-shadow: 0 8px 32px var(--shadow);
   height: 400px;
   overflow: hidden;
+  position: sticky;
+  top: 2rem;
+  z-index: 10;
 }
 
 .leaflet-container {
