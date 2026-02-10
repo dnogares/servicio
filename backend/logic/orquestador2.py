@@ -139,6 +139,7 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 import csv
 import tempfile
+import sys
 import warnings
 
 import matplotlib.pyplot as plt
@@ -154,6 +155,12 @@ from shapely.geometry import box
 
 # Ignorar advertencias de geometrías medidas (M) para limpiar la consola
 warnings.filterwarnings("ignore", category=UserWarning)
+
+# Configurar salida estándar a UTF-8 para evitar errores de emojis en Windows
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN GLOBAL
