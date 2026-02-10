@@ -1,25 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary: hsl(210, 100%, 50%);
-  --primary-dark: hsl(210, 100%, 40%);
+  /* Cambiado a tono Verde Esmeralda (ajusta el primer número 0-360 para otros colores) */
+  --primary: hsl(150, 100%, 40%);
+  --primary-dark: hsl(150, 100%, 30%);
   --secondary: hsl(160, 60%, 45%);
   --success: hsl(140, 60%, 50%);
   --error: hsl(0, 70%, 55%);
   --warning: hsl(40, 95%, 60%);
-  
+
   --bg-primary: hsl(220, 20%, 10%);
   --bg-secondary: hsl(220, 20%, 14%);
   --bg-tertiary: hsl(220, 20%, 18%);
   --bg-card: hsl(220, 20%, 16%);
-  
+
   --text-primary: hsl(0, 0%, 95%);
   --text-secondary: hsl(0, 0%, 70%);
   --text-tertiary: hsl(0, 0%, 50%);
-  
+
   --border: hsl(220, 20%, 25%);
   --shadow: rgba(0, 0, 0, 0.3);
-  
+
   --radius: 12px;
   --radius-lg: 16px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -74,8 +75,15 @@ body {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .title {
@@ -190,8 +198,15 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .dropzone-text {
@@ -423,8 +438,15 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .progress-container {
@@ -478,18 +500,21 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.3) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      transparent 100%);
   animation: shimmer 2s infinite;
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .progress-fill.error {
@@ -556,6 +581,7 @@ body {
     opacity: 0;
     transform: translateX(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -623,6 +649,7 @@ body {
    ═══════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
+
   .header-content,
   .container {
     padding: 0 1rem;
@@ -659,26 +686,5 @@ body {
 
   .action-buttons .btn {
     width: 100%;
-  }
-}
-/* Processing Grid Layout */
-.processing-section {
-  animation: fadeIn 0.5s ease-in;
-}
-
-.processing-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-}
-
-.processing-left,
-.processing-right {
-  min-width: 0; /* Importante para grid */
-}
-
-@media (max-width: 1200px) {
-  .processing-grid {
-    grid-template-columns: 1fr;
   }
 }

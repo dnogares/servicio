@@ -1,3 +1,12 @@
+import sys
+import io
+
+# Configurar salida estándar a UTF-8 para evitar errores de emojis en Windows
+if sys.stdout and hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if sys.stderr and hasattr(sys.stderr, 'buffer'):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 import asyncio
 import shutil
 import uuid
@@ -9,33 +18,13 @@ import io
 import threading
 import time
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, APIRouter
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from logic.orquestador2 import OrquestadorPipeline
 
-# ═══════════════════════════════════════════════════════════════════════════
-# CONFIGURACIÓN
-# ═══════════════════════════════════════════════════════════════════════════
-
-app = FastAPI(
-    title="Pipeline GIS Catastral",
-    description="API para procesamiento automatizado de referencias catastrales",
-    version="1.0.0"
-)
-
-# CORS para permitir peticiones desde el frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar dominio exacto
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-import sys
 import os
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -99,17 +88,17 @@ procesos_activos = {}
 # ENDPOINTS API (Prefijo /api para coincidir con el frontend)
 # ═══════════════════════════════════════════════════════════════════════════
 
-api_app = FastAPI()
+api_router = APIRouter()
 
-@api_app.get("/")
+@api_router.get("/")
 async def api_root():
     return {"status": "ok", "message": "API del Pipeline GIS Catastral"}
 
-@api_app.get("/health")
+@api_router.get("/health")
 async def health():
     return {"status": "healthy"}
 
-@api_app.get("/info")
+@api_router.get("/info")
 async def info():
     fuentes_ok = FUENTES_DIR.exists()
     fuentes_archivos = len(list(FUENTES_DIR.rglob("*.gpkg"))) if fuentes_ok else 0
@@ -127,7 +116,7 @@ async def info():
         }
     }
 
-@api_app.post("/upload")
+@api_router.post("/upload")
 async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     if not file.filename.endswith('.txt'):
         raise HTTPException(status_code=400, detail="Solo se aceptan archivos .txt")
@@ -153,19 +142,19 @@ async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File
     
     return {"proceso_id": proceso_id}
 
-@api_app.get("/status/{proceso_id}")
+@api_router.get("/status/{proceso_id}")
 async def get_status(proceso_id: str):
     if proceso_id not in procesos_activos:
         raise HTTPException(status_code=404, detail="Proceso no encontrado")
     return procesos_activos[proceso_id]
 
-@api_app.get("/logs/{proceso_id}")
+@api_router.get("/logs/{proceso_id}")
 async def get_logs(proceso_id: str):
     if proceso_id not in procesos_activos:
         raise HTTPException(status_code=404, detail="Proceso no encontrado")
     return {"logs": procesos_activos[proceso_id]["logs"]}
 
-@api_app.get("/download/{proceso_id}")
+@api_router.get("/download/{proceso_id}")
 async def download_results(proceso_id: str):
     if proceso_id not in procesos_activos or procesos_activos[proceso_id]["estado"] != "completado":
         raise HTTPException(status_code=400, detail="Proceso no listo")
@@ -224,7 +213,7 @@ def procesar_archivo_task(proceso_id: str, archivo_path: Path):
 # MONTAJE DE API Y FRONTEND
 # ═══════════════════════════════════════════════════════════════════════════
 
-app.mount("/api", api_app)
+app.include_router(api_router, prefix="/api")
 
 # Servir el frontend
 from fastapi.staticfiles import StaticFiles
@@ -246,5 +235,4 @@ if __name__ == "__main__":
     if hasattr(sys, '_MEIPASS'):
         threading.Thread(target=lambda: (time.sleep(1.5), webbrowser.open(f"http://localhost:{port}")), daemon=True).start()
     
-    uvicorn.run(app, host="127.0.0.1", port=port, log_config=None)
-
+    uvicorn.run(app, host="0.0.0.0", port=port, log_config=None)
