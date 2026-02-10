@@ -81,6 +81,13 @@ app.add_middleware(
 # Estado de los procesos
 procesos_activos = {}
 
+# Imprimir rutas al iniciar para depuración
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 API Iniciada. Rutas registradas:")
+    for route in app.routes:
+        print(f"   - {route.path} [{route.name}]")
+
 # ═══════════════════════════════════════════════════════════════════════════
 # ENDPOINTS API (Prefijo /api para coincidir con el frontend)
 # ═══════════════════════════════════════════════════════════════════════════

@@ -17,8 +17,8 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// @ts-ignore
-const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+// Usamos ruta relativa siempre. El proxy (dev) o Nginx (prod) se encargan del resto.
+const API_URL = '/api';
 
 
 interface ProcesoStatus {
@@ -123,6 +123,7 @@ function App() {
         const formData = new FormData();
         formData.append('file', archivo);
 
+        console.log(`Enviando petición a: ${API_URL}/upload`);
         try {
             const response = await axios.post(`${API_URL}/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -257,37 +258,6 @@ function App() {
                                         />
                                         {/* Renderizar geometrías si existen (incluso de procesos anteriores si se guardaran) */}
                                     </MapContainer>
-                                </div>
-
-                                {/* Información */}
-                                <div className="info-card">
-                                    <h3 className="info-title">ℹ️ Información del Pipeline</h3>
-                                    <div className="info-content">
-                                        <div className="info-item">
-                                            <span className="info-number">19</span>
-                                            <span className="info-label">Pasos Automatizados</span>
-                                        </div>
-                                        <div className="info-item">
-                                            <span className="info-number">12</span>
-                                            <span className="info-label">Planos Cartográficos</span>
-                                        </div>
-                                        <div className="info-item">
-                                            <span className="info-number">20+</span>
-                                            <span className="info-label">Archivos Generados</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="phases">
-                                        <h4>Fases del Proceso:</h4>
-                                        <ul>
-                                            <li>🔍 Fase 1: Adquisición de datos (XML, PDF)</li>
-                                            <li>🗺️ Fase 2: Generación vectorial (KML, PNG)</li>
-                                            <li>📊 Fase 3: Exportación tabular (Excel, CSV)</li>
-                                            <li>📝 Fase 4: Documentación (Logs)</li>
-                                            <li>🌍 Fase 5: Análisis espacial (Afecciones)</li>
-                                            <li>📍 Fases 6-12: Planos cartográficos</li>
-                                        </ul>
-                                    </div>
                                 </div>
                             </div>
                         </div>
