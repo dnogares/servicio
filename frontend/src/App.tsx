@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import MapViewer from './components/MapViewer';
 import './App.css';
 
 // @ts-ignore
 const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
-
 
 interface ProcesoStatus {
     proceso_id: string;
@@ -15,6 +15,11 @@ interface ProcesoStatus {
     error?: string;
 }
 
+interface Coordinate {
+    lat: number;
+    lng: number;
+}
+
 function App() {
     const [archivo, setArchivo] = useState<File | null>(null);
     const [procesoId, setProcesoId] = useState<string | null>(null);
@@ -22,6 +27,7 @@ function App() {
     const [logs, setLogs] = useState<string[]>([]);
     const [cargando, setCargando] = useState(false);
     const [arrastrando, setArrastrando] = useState(false);
+    const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
 
     // Polling para obtener estado del proceso
     useEffect(() => {
@@ -35,6 +41,17 @@ function App() {
                 // Obtener logs
                 const logsResponse = await axios.get<{ logs: string[] }>(`${API_URL}/logs/${procesoId}`);
                 setLogs(logsResponse.data.logs);
+
+                // Simular coordenadas para demostración
+                // TODO: Aquí deberías obtener las coordenadas reales del backend
+                if (coordinates.length === 0) {
+                    // Ejemplo de coordenadas (Almería) - Se muestran inmediatamente
+                    setCoordinates([
+                        { lat: 36.8381, lng: -2.4597 },
+                        { lat: 36.8400, lng: -2.4620 },
+                        { lat: 36.8420, lng: -2.4580 }
+                    ]);
+                }
 
                 // Detener polling si completó o hubo error
                 if (response.data.estado === 'completado' || response.data.estado === 'error') {
@@ -88,6 +105,7 @@ function App() {
         setCargando(true);
         setStatus(null);
         setLogs([]);
+        setCoordinates([]);
 
         const formData = new FormData();
         formData.append('file', archivo);
@@ -130,6 +148,7 @@ function App() {
         setStatus(null);
         setLogs([]);
         setCargando(false);
+        setCoordinates([]);
     };
 
     return (
@@ -245,69 +264,79 @@ function App() {
                         </div>
                     )}
 
-                    {/* Paso 2: Progreso y Logs */}
+                    {/* Paso 2: Progreso, Logs y Mapa */}
                     {procesoId && status && (
                         <div className="processing-section">
-                            <div className="card">
-                                <h2 className="section-title">
-                                    {status.estado === 'procesando' && '⏳ Procesando...'}
-                                    {status.estado === 'completado' && '✅ Completado'}
-                                    {status.estado === 'error' && '❌ Error'}
-                                </h2>
+                            <div className="processing-grid">
+                                {/* Columna izquierda: Status y Logs */}
+                                <div className="processing-left">
+                                    <div className="card">
+                                        <h2 className="section-title">
+                                            {status.estado === 'procesando' && '⏳ Procesando...'}
+                                            {status.estado === 'completado' && '✅ Completado'}
+                                            {status.estado === 'error' && '❌ Error'}
+                                        </h2>
 
-                                {/* Barra de Progreso */}
-                                <div className="progress-container">
-                                    <div className="progress-info">
-                                        <span className="progress-label">{status.mensaje}</span>
-                                        <span className="progress-percentage">{status.progreso}%</span>
-                                    </div>
-                                    <div className="progress-bar">
-                                        <div
-                                            className={`progress-fill ${status.estado === 'error' ? 'error' : ''}`}
-                                            style={{ width: `${status.progreso}%` }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Logs */}
-                                <div className="logs-section">
-                                    <h3 className="logs-title">📋 Registro de Actividad</h3>
-                                    <div className="logs-container">
-                                        {logs.length === 0 ? (
-                                            <p className="logs-empty">Esperando logs...</p>
-                                        ) : (
-                                            logs.map((log, index) => (
-                                                <div key={index} className="log-entry">
-                                                    {log}
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Botones de Acción */}
-                                <div className="action-buttons">
-                                    {status.estado === 'completado' && (
-                                        <>
-                                            <button onClick={handleDescargar} className="btn btn-success">
-                                                📦 Descargar Resultados (ZIP)
-                                            </button>
-                                            <button onClick={handleNuevoProceso} className="btn btn-secondary">
-                                                🔄 Nuevo Proceso
-                                            </button>
-                                        </>
-                                    )}
-
-                                    {status.estado === 'error' && (
-                                        <>
-                                            <div className="error-message">
-                                                ⚠️ {status.error || 'Ocurrió un error durante el procesamiento'}
+                                        {/* Barra de Progreso */}
+                                        <div className="progress-container">
+                                            <div className="progress-info">
+                                                <span className="progress-label">{status.mensaje}</span>
+                                                <span className="progress-percentage">{status.progreso}%</span>
                                             </div>
-                                            <button onClick={handleNuevoProceso} className="btn btn-secondary">
-                                                🔄 Intentar de Nuevo
-                                            </button>
-                                        </>
-                                    )}
+                                            <div className="progress-bar">
+                                                <div
+                                                    className={`progress-fill ${status.estado === 'error' ? 'error' : ''}`}
+                                                    style={{ width: `${status.progreso}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Logs */}
+                                        <div className="logs-section">
+                                            <h3 className="logs-title">📋 Registro de Actividad</h3>
+                                            <div className="logs-container">
+                                                {logs.length === 0 ? (
+                                                    <p className="logs-empty">Esperando logs...</p>
+                                                ) : (
+                                                    logs.map((log, index) => (
+                                                        <div key={index} className="log-entry">
+                                                            {log}
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Botones de Acción */}
+                                        <div className="action-buttons">
+                                            {status.estado === 'completado' && (
+                                                <>
+                                                    <button onClick={handleDescargar} className="btn btn-success">
+                                                        📦 Descargar Resultados (ZIP)
+                                                    </button>
+                                                    <button onClick={handleNuevoProceso} className="btn btn-secondary">
+                                                        🔄 Nuevo Proceso
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {status.estado === 'error' && (
+                                                <>
+                                                    <div className="error-message">
+                                                        ⚠️ {status.error || 'Ocurrió un error durante el procesamiento'}
+                                                    </div>
+                                                    <button onClick={handleNuevoProceso} className="btn btn-secondary">
+                                                        🔄 Intentar de Nuevo
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Columna derecha: Mapa */}
+                                <div className="processing-right">
+                                    <MapViewer coordinates={coordinates} />
                                 </div>
                             </div>
                         </div>

@@ -21,21 +21,18 @@ def build():
     print("INICIANDO PROCESO DE CREACION DEL EJECUTABLE")
     print("=" * 70)
 
-    # 1. Compilar Frontend
-    print("\n[PASO 1] Compilando Frontend (React)...")
+    # 1. Verificar que el frontend ya esté compilado
+    print("\n[PASO 1] Verificando Frontend compilado...")
     print("-" * 70)
-    run_command("npm install", cwd=frontend_dir)
-    run_command("npm run build", cwd=frontend_dir)
+    frontend_dist = frontend_dir / "dist"
+    if not frontend_dist.exists():
+        print("[ERROR] No se encuentra frontend/dist/")
+        print("[INFO] Ejecuta primero: cd frontend && npm run build")
+        exit(1)
+    print(f"[OK] Frontend ya compilado en: {frontend_dist}")
 
-    # 2. Preparar carpeta para PyInstaller
-    print("\n[PASO 2] Preparando carpetas...")
-    print("-" * 70)
-    if dist_dir.exists():
-        shutil.rmtree(dist_dir)
-    dist_dir.mkdir()
-
-    # 3. Crear el ejecutable con PyInstaller usando el archivo .spec
-    print("\n[PASO 3] Generando ejecutable con PyInstaller...")
+    # 2. Crear el ejecutable con PyInstaller usando el archivo .spec
+    print("\n[PASO 2] Generando ejecutable con PyInstaller...")
     print("-" * 70)
     
     # Usar el archivo .spec que ya existe
@@ -48,8 +45,8 @@ def build():
         print("[ERROR] No se encontro el archivo VisorCatastral.spec")
         exit(1)
 
-    # 4. Crear estructura de carpetas en dist/
-    print("\n[PASO 4] Creando estructura de carpetas...")
+    # 3. Crear estructura de carpetas en dist/
+    print("\n[PASO 3] Creando estructura de carpetas...")
     print("-" * 70)
     dist_output = root_dir / "dist"
     

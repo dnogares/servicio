@@ -661,3 +661,24 @@ body {
     width: 100%;
   }
 }
+/* Processing Grid Layout */
+.processing-section {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.processing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.processing-left,
+.processing-right {
+  min-width: 0; /* Importante para grid */
+}
+
+@media (max-width: 1200px) {
+  .processing-grid {
+    grid-template-columns: 1fr;
+  }
+}
