@@ -5,7 +5,7 @@
 ### 1. Cambiar Título y Subtítulo (líneas 141-142)
 
 ```tsx
-<h1 className="title">TU TÍTULO AQUÍ</h1>
+<h1 className="title">GIS Tecnología Alcalá</h1>
 <p className="subtitle">Tu descripción personalizada aquí</p>
 ```
 
@@ -34,7 +34,7 @@
 ### 5. Cambiar Footer (línea 318)
 
 ```tsx
-<p>Tu Empresa © 2026 | Tu mensaje personalizado</p>
+<p>Tecnología Alcalá © 2026 | Mi madre pensará que lo ha hecho otro</p>
 ```
 
 ---
